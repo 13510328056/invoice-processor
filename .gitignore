@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Project specific
+*.log
+发票信息统计.xlsx
+~*.xlsx.tmp
+
+# PaddleOCR models
+.paddleocr/
+.paddlex/
+
+# OS
+.DS_Store
+Thumbs.db

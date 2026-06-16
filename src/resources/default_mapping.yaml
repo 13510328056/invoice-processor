@@ -1,0 +1,40 @@
+# 默认 OFD 发票 XPath 映射表
+# 适用于国家税务总局标准 OFD 电子发票格式
+# 可根据开票系统差异自定义此映射
+
+# 发票基本信息
+invoice_code: "//Invoice/InvoiceCode"
+invoice_number: "//Invoice/InvoiceNo"
+invoice_date: "//Invoice/IssueDate"
+check_code: "//Invoice/CheckCode"
+invoice_type: "//Invoice/InvoiceType"
+
+# 购买方信息
+buyer_name: "//Invoice/BuyerName"
+buyer_tax_id: "//Invoice/BuyerTaxID"
+buyer_address_phone: "//Invoice/BuyerAddressTel"
+buyer_bank_account: "//Invoice/BuyerBankAccount"
+
+# 销售方信息
+seller_name: "//Invoice/SellerName"
+seller_tax_id: "//Invoice/SellerTaxID"
+seller_address_phone: "//Invoice/SellerAddressTel"
+seller_bank_account: "//Invoice/SellerBankAccount"
+
+# 金额合计信息
+total_amount_cn: "//Invoice/TotalAmountCn"
+total_amount: "//Invoice/TotalAmount"
+pretax_amount: "//Invoice/PreTaxAmount"
+tax_amount: "//Invoice/TaxAmount"
+
+# 商品明细 XPath (用于 XPath 遍历)
+line_items: "//Invoice/GoodsList/Goods"
+line_item_fields:
+  goods_name: "GoodsName"
+  spec_model: "SpecModel"
+  unit: "Unit"
+  quantity: "Quantity"
+  unit_price: "UnitPrice"
+  amount: "Amount"
+  tax_rate: "TaxRate"
+  tax_amount: "TaxAmount"

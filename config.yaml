@@ -1,0 +1,46 @@
+# 发票批处理工具配置文件
+# 留空项使用内置默认值
+output:
+  filename: "发票信息统计.xlsx"
+  sheet_success: "成功处理"
+  sheet_failed: "失败处理"
+  sheet_skipped: "非电子发票"
+  sheet_statistics: "处理统计"
+
+ocr:
+  engine: paddleocr        # paddleocr（主推）| tesseract | windows_ocr
+  lang: ch                 # PaddleOCR 语言模型：ch（中文）| en 等
+  use_gpu: false           # 是否启用 GPU 加速
+  timeout: 30              # 单文件 OCR 超时（秒）
+  enable_vilayout: true    # 是否启用 VI-LayoutXLM 结构化提取
+
+ofd:
+  enabled: true              # 是否启用 OFD XML 直接解析
+  mapping_path: ""           # OFD XPath 映射文件路径（留空使用内置默认映射）
+  extract_preview: false     # 是否提取 OFD 包内预览图片
+  fallback_to_ocr: true      # XML 解析失败时是否降级至 OCR
+
+processing:
+  max_workers: 4           # 并发线程数（0 = 串行）
+  retry_count: 3           # Excel 写入重试次数
+  enable_dedup: true       # 是否启用业务去重（以"发票代码+发票号码"为键）
+  skip_directories:        # 跳过的目录名称
+    - __pycache__
+    - node_modules
+    - .git
+  pdf_passwords:           # 尝试解密 PDF 的密码列表（留空 = 不尝试）
+    - ""                   # 空密码（部分电子发票使用）
+    - "123456"
+    - "password"
+
+extraction:
+  strategy: "ofd+xml+ocr"      # ofd+xml+ocr | paddleocr | paddleocr+llm
+  llm_fallback: true           # 置信度不足时启用 LLM 兜底
+  llm_provider: qwen           # qwen | claude | gemini
+  normalize_date: true         # 日期统一为 YYYY-MM-DD
+  normalize_amount: true       # 金额去除符号和千位分隔符
+  confidence_threshold: 0.85   # 低于此值的字段触发 LLM 兜底或标记人工复核
+
+logging:
+  level: INFO              # DEBUG | INFO | WARNING | ERROR
+  file: "processing.log"   # 留空则不输出日志文件
