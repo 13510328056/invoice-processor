@@ -117,6 +117,45 @@ class InvoiceData:
         """设置当前时间为处理时间"""
         self.processing_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    def to_dict(self) -> dict:
+        """序列化为 JSON 友好的字典（供 Web API 使用）"""
+        return {
+            # 文件元数据
+            "file_path": self.file_path,
+            "processing_time": self.processing_time,
+            "extraction_source": self.extraction_source,
+            # Section A: 发票基本信息
+            "invoice_type": self.invoice_type,
+            "invoice_code": self.invoice_code,
+            "invoice_number": self.invoice_number,
+            "invoice_date": self.invoice_date,
+            "check_code": self.check_code,
+            # Section B: 购买方信息
+            "buyer_name": self.buyer_name,
+            "buyer_tax_id": self.buyer_tax_id,
+            "buyer_address_phone": self.buyer_address_phone,
+            "buyer_bank_account": self.buyer_bank_account,
+            # Section C: 销售方信息
+            "seller_name": self.seller_name,
+            "seller_tax_id": self.seller_tax_id,
+            "seller_address_phone": self.seller_address_phone,
+            "seller_bank_account": self.seller_bank_account,
+            # Section D: 金额合计信息
+            "total_amount_cn": self.total_amount_cn,
+            "total_amount": self.total_amount,
+            "pretax_amount": self.pretax_amount,
+            "tax_amount": self.tax_amount,
+            # Section E: 商品明细
+            "line_items": [item.to_dict() for item in self.line_items],
+            "line_items_json": self.line_items_json,
+            # 辅助信息
+            "raw_markdown": self.raw_markdown,
+            "remarks": self.remarks,
+            "is_dedup": self.is_dedup,
+            "validation_notes": self.validation_notes,
+            "is_success": self.is_success,
+        }
+
     def to_excel_row(self) -> list:
         """转换为 Excel 行数据（22 列，与 SRS 3.3.2 列定义一致）"""
         return [
