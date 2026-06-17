@@ -87,15 +87,27 @@ uvicorn web_api.main:app --reload --port 8000
 uvicorn web_api.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
-### Docker 部署
+### Docker 部署（推荐）
+
+完整部署指南参见 [docs/deployment.md](docs/deployment.md)。
 
 ```bash
-# 构建并启动
+# 构建并启动服务
 docker compose up -d
 
 # 查看日志
 docker compose logs -f
+
+# 停止服务
+docker compose down
+
+# 重启服务（配置变更后）
+docker compose restart
 ```
+
+> **系统要求**：目标服务器需安装 Docker Engine 24+ 和 Docker Compose v2。
+> **内存要求**：PaddleOCR 约占用 1~2GB 内存，建议分配至少 4GB。
+> **首次启动**：因 PaddleOCR 模型下载和预热，首次启动约需 30~60 秒。
 
 ### API 端点
 
