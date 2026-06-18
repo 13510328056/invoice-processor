@@ -7,10 +7,12 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-# 安装构建依赖
+# 安装构建依赖（编译 C 扩展需要 build-essential 和 python3-dev）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0t64 \
+    build-essential \
+    python3-dev \
     -o Acquire::Retries=3 \
     && rm -rf /var/lib/apt/lists/*
 
