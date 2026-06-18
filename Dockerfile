@@ -9,8 +9,9 @@ WORKDIR /build
 
 # 安装构建依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
+    libgl1 \
+    libglib2.0-0t64 \
+    -o Acquire::Retries=3 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
@@ -28,9 +29,10 @@ WORKDIR /app
 
 # 运行时系统依赖（OpenCV + 字体）
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
+    libgl1 \
+    libglib2.0-0t64 \
     fonts-noto-cjk \
+    -o Acquire::Retries=3 \
     && rm -rf /var/lib/apt/lists/*
 
 # 从构建阶段复制安装的包

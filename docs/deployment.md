@@ -19,7 +19,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/13510328056/invoice-processor.git
+git clone https://github.com/13510328056/invoice-processor.git ./invoice-processor
 cd invoice-processor
 ```
 
@@ -51,6 +51,8 @@ processing:
 ```bash
 # 首次构建并后台启动
 docker compose up -d
+
+
 
 # 查看启动日志
 docker compose logs -f
