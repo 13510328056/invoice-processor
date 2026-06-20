@@ -24,6 +24,9 @@ env/
 .paddleocr/
 .paddlex/
 
+# Coverage
+.coverage
+
 # OS
 .DS_Store
 Thumbs.db

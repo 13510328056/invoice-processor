@@ -27,7 +27,7 @@
 
 ### 环境要求
 
-- Python 3.10 ~ 3.12
+- Python 3.12+
 - 操作系统：Windows 10+ / macOS 12+ / Linux
 
 ### 安装
@@ -74,39 +74,19 @@ python invoice_processor.py --init-config
 
 提供 REST API，可通过 HTTP 远程调用发票识别功能。
 
-### 快速启动
+### 启动 Web 服务
 
 ```bash
-# 安装额外依赖
-pip install fastapi uvicorn python-multipart
-
-# 启动服务（开发模式）
-uvicorn web_api.main:app --reload --port 8000
-
-# 启动服务（生产模式）
+# 直接启动（生产模式）
 uvicorn web_api.main:app --host 0.0.0.0 --port 8000 --workers 1
-```
 
-### Docker 部署（推荐）
+# 开发模式（热重载）
+uvicorn web_api.main:app --reload --port 8000
+```
 
 完整部署指南参见 [docs/deployment.md](docs/deployment.md)。
 
-```bash
-# 构建并启动服务
-docker compose up -d
-
-# 查看日志
-docker compose logs -f
-
-# 停止服务
-docker compose down
-
-# 重启服务（配置变更后）
-docker compose restart
-```
-
-> **系统要求**：目标服务器需安装 Docker Engine 24+ 和 Docker Compose v2。
-> **内存要求**：PaddleOCR 约占用 1~2GB 内存，建议分配至少 4GB。
+> **内存要求**：PaddleOCR 约占用 1~2GB 内存，建议至少 4GB。
 > **首次启动**：因 PaddleOCR 模型下载和预热，首次启动约需 30~60 秒。
 
 ### API 端点
@@ -180,8 +160,6 @@ invoice-processor/
 ├── invoice_processor.py      # CLI 入口
 ├── config.yaml               # 处理配置
 ├── web_config.yaml           # Web 服务配置
-├── Dockerfile                # Docker 构建文件
-├── docker-compose.yml        # Docker 编排
 │
 ├── src/                      # 核心处理模块
 │   ├── config/               # 配置加载 (Pydantic + YAML)
@@ -220,14 +198,13 @@ invoice-processor/
 |---|---|
 | OFD 解析 | `lxml` + `zipfile` (CustomTag → ID → 文本) |
 | PDF 处理 | `PyMuPDF` (位置感知文本提取) |
-| OCR 引擎 | `PaddleOCR 2.8.1` + `PaddlePaddle 2.6.2` |
+| OCR 引擎 | `PaddleOCR` + `PaddlePaddle` |
 | 图像处理 | `opencv-python-headless` |
 | Excel 输出 | `openpyxl` |
 | LLM 集成 | `httpx` (Qwen/Claude/Gemini) |
 | 配置校验 | `pydantic` |
 | CLI | `argparse` |
 | Web 框架 | `FastAPI` + `uvicorn` |
-| 容器化 | `Docker` + `docker-compose` |
 
 ---
 

@@ -2,7 +2,7 @@
 Web 服务专属配置模型
 
 独立于现有 config.yaml（AppConfig），控制 Web 层行为。
-支持环境变量覆盖（前缀 INVOICE_WEB_），便于 Docker 部署。
+支持环境变量覆盖（前缀 INVOICE_WEB_）。
 """
 
 from __future__ import annotations

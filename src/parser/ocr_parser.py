@@ -28,6 +28,10 @@ class OCRParser(InvoiceParser):
     def __init__(self):
         self._ocr_instance = None
 
+    def _initialize_engine(self) -> None:
+        """主动触发引擎加载（用于预热）"""
+        _ = self._ocr
+
     @property
     def _ocr(self):
         """懒加载 PaddleOCR 实例"""
@@ -104,26 +108,25 @@ class OCRParser(InvoiceParser):
 
             # ── 4. OCR 识别 ──
             try:
-                # PaddleOCR 2.x 使用 ocr() API，3.x 使用 predict() API
-                if hasattr(self._ocr, "predict") and "predict" in type(self._ocr).__dict__:
-                    ocr_result = self._ocr.predict(input=processed)
-                    # 转换 predict() 的结果格式
-                    text_blocks = []
-                    for page_result in ocr_result:
-                        for line in page_result:
-                            text_blocks.append({
-                                "text": line.get("text", ""),
-                                "confidence": line.get("score", 0),
-                            })
-                else:
-                    ocr_result = self._ocr.ocr(processed)
-                    text_blocks = []
-                    for line in ocr_result[0] if ocr_result and ocr_result[0] else []:
-                        text_blocks.append({
-                            "bbox": line[0],
-                            "text": line[1][0],
-                            "confidence": line[1][1],
-                        })
+                ocr_result = self._ocr.ocr(processed)
+                text_blocks = []
+
+                # PaddleOCR 3.x 返回格式：list[dict]，每个 dict 含 rec_texts/rec_scores/rec_polys
+                if ocr_result and isinstance(ocr_result, list) and len(ocr_result) > 0:
+                    for page in ocr_result:
+                        if not isinstance(page, dict):
+                            continue
+                        texts = page.get("rec_texts") or []
+                        scores = page.get("rec_scores") or []
+                        polys = page.get("rec_polys") or []
+                        for i, text in enumerate(texts):
+                            block = {
+                                "text": text,
+                                "confidence": scores[i] if i < len(scores) else 0.0,
+                            }
+                            if polys and i < len(polys):
+                                block["bbox"] = polys[i]
+                            text_blocks.append(block)
             except Exception as e:
                 result.parse_errors.append(f"OCR识别失败: {e}")
                 logger.warning(f"PaddleOCR 识别失败: {e}，使用嵌入式文本（如有）")

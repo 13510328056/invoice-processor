@@ -7,7 +7,7 @@ name = "invoice-processor"
 version = "1.0.0"
 description = "发票批处理工具 — 批量识别、提取与结构化导出电子发票"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 
 authors = [
@@ -15,17 +15,20 @@ authors = [
 ]
 
 dependencies = [
-    "lxml>=5.0",
-    "PyMuPDF>=1.24",
-    "paddleocr>=2.8",
-    "opencv-python-headless>=4.9",
+    "lxml>=5.3",
+    "PyMuPDF>=1.25",
+    "paddleocr",
+    # paddlepaddle 3.3.x 有 PIR 引擎兼容性问题（ConvertPirAttribute2RuntimeAttribute），
+    # 使用 3.2.x 系列最新稳定版，待上游修复后放开版本限制
+    "paddlepaddle>=3.2,<3.3",
+    "opencv-python-headless>=4.10",
     "openpyxl>=3.1",
     "httpx>=0.28",
-    "pydantic>=2.0",
+    "pydantic>=2.10",
     "pyyaml>=6.0",
-    "fastapi>=0.110.0",
-    "uvicorn[standard]>=0.27.0",
-    "python-multipart>=0.0.9",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "python-multipart>=0.0.18",
 ]
 
 [project.scripts]
