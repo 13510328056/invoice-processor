@@ -26,11 +26,12 @@ class OCRParser(InvoiceParser):
     """OCR 发票解析器（单例模式，PaddleX 不支持重复初始化）"""
 
     _shared_instance = None  # 类级共享实例
+    _init_failed = False     # 标记初始化失败，防止重复重试
 
     @classmethod
     def _get_shared_ocr(cls):
         """获取或创建全局共享的 PaddleOCR 实例"""
-        if cls._shared_instance is None:
+        if cls._shared_instance is None and not cls._init_failed:
             try:
                 from paddleocr import PaddleOCR
                 ocr_kwargs: dict = {}
@@ -49,6 +50,7 @@ class OCRParser(InvoiceParser):
                 raise
             except Exception as e:
                 logger.error(f"PaddleOCR 初始化失败: {e}")
+                cls._init_failed = True  # 标记失败，后续请求不再重试
                 raise
         return cls._shared_instance
 
