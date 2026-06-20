@@ -127,15 +127,10 @@ class OCRParser(InvoiceParser):
                 if ocr_result and isinstance(ocr_result, list) and len(ocr_result) > 0:
                     for page in ocr_result:
                         try:
-                            if isinstance(page, dict):
-                                texts = page.get("rec_texts") if page.get("rec_texts") is not None else []
-                                scores = page.get("rec_scores") if page.get("rec_scores") is not None else []
-                                polys = page.get("rec_polys") if page.get("rec_polys") is not None else []
-                            else:
-                                # PaddleX OCRResult — 直接读实例属性
-                                texts = getattr(page, 'rec_texts') if hasattr(page, 'rec_texts') else []
-                                scores = getattr(page, 'rec_scores') if hasattr(page, 'rec_scores') else []
-                                polys = getattr(page, 'rec_polys') if hasattr(page, 'rec_polys') else []
+                            # PaddleX OCRResult 是 dict-like 对象，支持 .get() 和 ["key"]
+                            texts = page.get("rec_texts") if hasattr(page, 'get') else []
+                            scores = page.get("rec_scores") if hasattr(page, 'get') else []
+                            polys = page.get("rec_polys") if hasattr(page, 'get') else []
                             texts = (list(texts) if texts is not None else [])
                             scores = (list(scores) if scores is not None else [])
                             polys = (list(polys) if polys is not None else [])
@@ -165,8 +160,20 @@ class OCRParser(InvoiceParser):
                 b["text"] = str(b["text"])
                 b["confidence"] = float(b.get("confidence", 0.0))
                 bbox = b.get("bbox")
-                if bbox is not None:
-                    b["bbox"] = np.asarray(bbox).tolist() if not isinstance(bbox, list) else bbox
+                if bbox is not None and not isinstance(bbox, (list, tuple)):
+                    # PaddleX 可能返回 numpy array
+                    bbox = np.asarray(bbox).tolist()
+                if isinstance(bbox, (list, tuple)):
+                    # 统一转成 4 点格式 [[x,y], [x,y], [x,y], [x,y]]
+                    if len(bbox) == 8:
+                        # 扁平 8 值: [x1,y1,x2,y2,x3,y3,x4,y4]
+                        bbox = [[bbox[0], bbox[1]], [bbox[2], bbox[3]],
+                                [bbox[4], bbox[5]], [bbox[6], bbox[7]]]
+                    elif len(bbox) == 4 and bbox[0] and isinstance(bbox[0], (list, tuple)):
+                        pass  # 已经是标准 4 点格式
+                    else:
+                        bbox = None  # 无法处理的格式
+                b["bbox"] = bbox
 
             # ── 5. 整理结果（添加左右列标记）──
             if text_blocks:
