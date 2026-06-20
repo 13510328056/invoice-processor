@@ -109,31 +109,47 @@ class OCRParser(InvoiceParser):
             if processed is None:
                 processed = image
 
-            # 确保输入为 numpy array（PaddleOCR 不接受 PIL Image）
+            # 确保输入为 numpy array（PaddleOCR 不接受 PIL Image），且为 3 通道
             if not isinstance(processed, np.ndarray):
                 processed = np.array(processed)
+            # PaddleX Normalize 要求 3 通道图像，灰度图需扩展
+            if len(processed.shape) == 2:
+                import cv2
+                processed = cv2.cvtColor(processed, cv2.COLOR_GRAY2BGR)
+            logger.debug(f"OCR input shape: {processed.shape}")
 
             # ── 4. OCR 识别 ──
             try:
                 ocr_result = self._ocr.ocr(processed)
                 text_blocks = []
 
-                # PaddleOCR 3.x 返回格式：list[dict]，每个 dict 含 rec_texts/rec_scores/rec_polys
+                # PaddleOCR 3.x 返回格式：list[OCRResult / dict]
                 if ocr_result and isinstance(ocr_result, list) and len(ocr_result) > 0:
                     for page in ocr_result:
-                        if not isinstance(page, dict):
+                        try:
+                            if isinstance(page, dict):
+                                texts = page.get("rec_texts") if page.get("rec_texts") is not None else []
+                                scores = page.get("rec_scores") if page.get("rec_scores") is not None else []
+                                polys = page.get("rec_polys") if page.get("rec_polys") is not None else []
+                            else:
+                                # PaddleX OCRResult — 直接读实例属性
+                                texts = getattr(page, 'rec_texts') if hasattr(page, 'rec_texts') else []
+                                scores = getattr(page, 'rec_scores') if hasattr(page, 'rec_scores') else []
+                                polys = getattr(page, 'rec_polys') if hasattr(page, 'rec_polys') else []
+                            texts = (list(texts) if texts is not None else [])
+                            scores = (list(scores) if scores is not None else [])
+                            polys = (list(polys) if polys is not None else [])
+                            if not texts:
+                                continue
+                            for i, text in enumerate(texts):
+                                block = {"text": text}
+                                block["confidence"] = scores[i] if i < len(scores) else 0.0
+                                if len(polys) > 0 and i < len(polys):
+                                    block["bbox"] = np.asarray(polys[i]).tolist()
+                                text_blocks.append(block)
+                        except Exception:
+                            # 单页解析失败不影响其他页
                             continue
-                        texts = page.get("rec_texts") or []
-                        scores = page.get("rec_scores") or []
-                        polys = page.get("rec_polys") or []
-                        for i, text in enumerate(texts):
-                            block = {
-                                "text": text,
-                                "confidence": scores[i] if i < len(scores) else 0.0,
-                            }
-                            if polys and i < len(polys):
-                                block["bbox"] = polys[i]
-                            text_blocks.append(block)
             except Exception as e:
                 result.parse_errors.append(f"OCR识别失败: {e}")
                 logger.warning(f"PaddleOCR 识别失败: {e}，使用嵌入式文本（如有）")
@@ -143,6 +159,14 @@ class OCRParser(InvoiceParser):
                     result.ocr_text_blocks = text_blocks
                     result.ocr_confidence = 0.8
                 return result
+
+            # 确保 text_blocks 中所有值为纯 Python 类型（无 numpy scalar/array）
+            for b in text_blocks:
+                b["text"] = str(b["text"])
+                b["confidence"] = float(b.get("confidence", 0.0))
+                bbox = b.get("bbox")
+                if bbox is not None:
+                    b["bbox"] = np.asarray(bbox).tolist() if not isinstance(bbox, list) else bbox
 
             # ── 5. 整理结果（添加左右列标记）──
             if text_blocks:
@@ -185,6 +209,8 @@ class OCRParser(InvoiceParser):
             )
 
         except Exception as e:
+            import traceback
+            logger.error(f"OCR处理异常: {e}\n{''.join(traceback.format_exception(type(e), e, e.__traceback__))}")
             result.parse_errors.append(f"OCR处理异常: {type(e).__name__}: {e}")
 
         result.parser_elapsed = time.monotonic() - start
