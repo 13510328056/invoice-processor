@@ -68,6 +68,10 @@ class OCRParser(InvoiceParser):
             self._ocr_instance = self._get_shared_ocr()
         return self._ocr_instance
 
+    def _is_ocr_available(self) -> bool:
+        """OCR 引擎是否可用"""
+        return self._shared_instance is not None
+
     def parse(self, scanned_file: ScannedFile, config: AppConfig) -> RawParseResult:
         """
         解析文件：PDF 光栅化或图片直接送入 OCR
@@ -122,6 +126,16 @@ class OCRParser(InvoiceParser):
                 import cv2
                 processed = cv2.cvtColor(processed, cv2.COLOR_GRAY2BGR)
             logger.debug(f"OCR input shape: {processed.shape}")
+
+            # OCR 引擎不可用（如初始化失败）→ 跳过 OCR，用嵌入式文本
+            if not self._is_ocr_available():
+                result.parse_errors.append("OCR 引擎不可用，使用嵌入式文本（如有）")
+                if text_content:
+                    result.ocr_full_text = text_content
+                    result.ocr_text_blocks = text_blocks
+                    result.ocr_confidence = 0.8
+                result.parser_elapsed = time.monotonic() - start
+                return result
 
             # ── 4. OCR 识别 ──
             try:
