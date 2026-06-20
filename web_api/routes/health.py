@@ -24,9 +24,6 @@ router = APIRouter(tags=["Health"])
 # 服务启动时间（在 main.py 中设置）
 _start_time: float = time.monotonic()
 
-# 由 main.py 中的 lifespan 设置，供健康检查读取
-ocr_parser_global: Optional[OCRParser] = None
-
 
 def set_start_time() -> None:
     """在 app 启动时调用"""
@@ -42,13 +39,12 @@ async def health_check(
     """健康检查 — 返回服务状态"""
     uptime = time.monotonic() - _start_time
 
-    # 检查 OCR 是否已预热
+    # 检查 OCR 是否已预热（检查类级共享实例，兼容预热开启/关闭两种场景）
     ocr_loaded = False
-    if ocr_parser_global is not None:
-        try:
-            ocr_loaded = ocr_parser_global._ocr_instance is not None
-        except Exception:
-            pass
+    try:
+        ocr_loaded = OCRParser._shared_instance is not None
+    except Exception:
+        pass
 
     return HealthResponse(
         status="ok",

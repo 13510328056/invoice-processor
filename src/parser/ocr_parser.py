@@ -23,7 +23,34 @@ logger = logging.getLogger(__name__)
 
 
 class OCRParser(InvoiceParser):
-    """OCR 发票解析器"""
+    """OCR 发票解析器（单例模式，PaddleX 不支持重复初始化）"""
+
+    _shared_instance = None  # 类级共享实例
+
+    @classmethod
+    def _get_shared_ocr(cls):
+        """获取或创建全局共享的 PaddleOCR 实例"""
+        if cls._shared_instance is None:
+            try:
+                from paddleocr import PaddleOCR
+                ocr_kwargs: dict = {}
+
+                # 检测 init 是否接受 use_gpu（co_varnames 不含 **kwargs 捕获的变量名）
+                init_vars = PaddleOCR.__init__.__code__.co_varnames
+                if "use_gpu" in init_vars:
+                    ocr_kwargs["use_gpu"] = False
+                if "use_angle_cls" in init_vars:
+                    ocr_kwargs["use_angle_cls"] = False
+                ocr_kwargs.setdefault("lang", "ch")
+                cls._shared_instance = PaddleOCR(**ocr_kwargs)
+                logger.info("PaddleOCR 引擎初始化完成")
+            except ImportError:
+                logger.error("PaddleOCR 未安装，请执行: pip install paddleocr")
+                raise
+            except Exception as e:
+                logger.error(f"PaddleOCR 初始化失败: {e}")
+                raise
+        return cls._shared_instance
 
     def __init__(self):
         self._ocr_instance = None
@@ -34,29 +61,9 @@ class OCRParser(InvoiceParser):
 
     @property
     def _ocr(self):
-        """懒加载 PaddleOCR 实例"""
+        """懒加载 PaddleOCR 实例（共享单例）"""
         if self._ocr_instance is None:
-            try:
-                from paddleocr import PaddleOCR
-                # PaddleOCR 2.x API：使用 use_gpu / use_angle_cls
-                # PaddleOCR 3.x API：这些参数已移除
-                ocr_kwargs: dict = {}
-
-                # 检测 init 是否接受 use_gpu（co_varnames 不含 **kwargs 捕获的变量名）
-                init_vars = PaddleOCR.__init__.__code__.co_varnames
-                if "use_gpu" in init_vars:
-                    ocr_kwargs["use_gpu"] = False
-                if "use_angle_cls" in init_vars:
-                    ocr_kwargs["use_angle_cls"] = False
-                ocr_kwargs.setdefault("lang", "ch")
-                self._ocr_instance = PaddleOCR(**ocr_kwargs)
-                logger.info("PaddleOCR 引擎初始化完成")
-            except ImportError:
-                logger.error("PaddleOCR 未安装，请执行: pip install paddleocr")
-                raise
-            except Exception as e:
-                logger.error(f"PaddleOCR 初始化失败: {e}")
-                raise
+            self._ocr_instance = self._get_shared_ocr()
         return self._ocr_instance
 
     def parse(self, scanned_file: ScannedFile, config: AppConfig) -> RawParseResult:

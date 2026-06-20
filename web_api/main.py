@@ -69,7 +69,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             from src.parser.ocr_parser import OCRParser
             ocr = OCRParser()
             ocr._initialize_engine()
-            health_route.ocr_parser_global = ocr
             logger.info("PaddleOCR 预热完成")
         except Exception as e:
             logger.warning(f"PaddleOCR 预热失败（将在首次请求时加载）: {e}")
