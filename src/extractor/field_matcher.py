@@ -514,17 +514,17 @@ def _extract_line_items_from_blocks(text_blocks: list[dict]) -> list[LineItem]:
     if header_idx < 0:
         return []
 
-    header_y = round(text_blocks[header_idx].get("y", 0) / 10) * 10
+    header_y = round(text_blocks[header_idx].get("y", 0) / 20) * 20
 
     # 2. 收集表头之后的数据块（到合计区域为止）
     data_texts: list[dict] = []
     for b in text_blocks[header_idx + 1:]:
         text = b.get("text", "").strip()
-        y_grp = round(b.get("y", 0) / 10) * 10
+        y_grp = round(b.get("y", 0) / 20) * 20
         side = b.get("side", "left")
 
         # 到达合计/汇总区 → 停止
-        if text in ("合", "计") or re.match(r"^[¥￥]", text):
+        if text in ("合", "计", "合计") or text.startswith("合计") or re.match(r"^[¥￥]", text):
             break
         if text in LINE_ITEM_HEADER_KEYWORDS or len(text) <= 1:
             continue

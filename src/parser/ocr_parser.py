@@ -104,10 +104,13 @@ class OCRParser(InvoiceParser):
                 result.parse_errors.append("图片加载失败")
                 return result
 
-            # ── 3. 图像预处理 ──
-            processed = self._preprocess_image(image)
-            if processed is None:
-                processed = image
+            # ── 3. 图像预处理（可选，PaddleX 自带预处理管线）──
+            # PaddleX 内部已包含 Normalize 等预处理步骤，对大多数清晰文档
+            # 无需额外预处理。对低质量图片可取消下方注释启用。
+            # processed = self._preprocess_image(image)
+            # if processed is None:
+            #     processed = image
+            processed = image
 
             # 确保输入为 numpy array（PaddleOCR 不接受 PIL Image），且为 3 通道
             if not isinstance(processed, np.ndarray):
