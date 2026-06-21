@@ -4,7 +4,7 @@
 
 | 项目 | 要求 |
 |------|------|
-| 操作系统 | Linux (推荐 Ubuntu 22.04+) / Windows / macOS |
+| 操作系统 | OpenCloudOS 9.4 / RHEL 9 / CentOS Stream 9 |
 | Python | ≥ 3.12 |
 | 内存 | ≥ 4GB（PaddleOCR 占用 1~2GB） |
 | 磁盘 | ≥ 10GB（含 PaddleOCR 模型） |
@@ -12,19 +12,41 @@
 
 ---
 
-## 一、快速部署（直接部署）
+## 一、快速部署
 
-### 1. 创建虚拟环境并安装
+### 1. 安装系统依赖
+
+```bash
+# OpenCloudOS / RHEL 9 / CentOS Stream 9
+sudo dnf install -y epel-release
+sudo dnf install -y python3.12 python3.12-devel python3.12-pip \
+    mesa-libGL glib2 libgomp \
+    gcc-c++ make \
+    google-noto-cjk-fonts
+```
+
+各包说明：
+
+| 包名 | 作用 |
+|------|------|
+| `python3.12` | Python 3.12 运行时 |
+| `python3.12-devel` | Python 头文件（编译 C 扩展需要） |
+| `mesa-libGL` | OpenGL 库（OpenCV/PaddleX 需要） |
+| `glib2` | GLib 底层库 |
+| `libgomp` | OpenMP 并行库（PaddlePaddle 需要） |
+| `gcc-c++ make` | C++ 编译工具链（pip 编译 C 扩展需要） |
+| `google-noto-cjk-fonts` | 中文 Noto 字体（OCR 可视化需要） |
+
+### 2. 创建虚拟环境并安装
 
 ```bash
 # 克隆仓库
 git clone https://github.com/13510328056/invoice-processor.git ./invoice-processor
 cd invoice-processor
 
-# 创建虚拟环境（推荐）
+# 创建虚拟环境
 python3.12 -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-# 或 .venv\Scripts\activate  # Windows
+source .venv/bin/activate
 
 # 安装依赖
 pip install -e .
@@ -32,7 +54,7 @@ pip install -e .
 
 首次安装时 pip 会自动解析并下载所有依赖（paddleocr、paddlepaddle、opencv 等），耗时取决于网络。
 
-### 2. 按需修改配置
+### 3. 按需修改配置
 
 编辑 `web_config.yaml` 调整 Web 服务参数：
 
@@ -55,7 +77,7 @@ processing:
   max_workers: 4                  # 并发线程数
 ```
 
-### 3. 启动 Web 服务
+### 4. 启动 Web 服务
 
 ```bash
 # 单 worker 模式（PaddleOCR 每个进程 ~1-2GB 内存）
@@ -79,7 +101,7 @@ curl http://localhost:8000/api/v1/health
 {"status":"ok","version":"1.0.0","uptime_seconds":12.34,"ocr_loaded":true}
 ```
 
-### 4. 验证
+### 5. 验证
 
 ```bash
 # 健康检查
@@ -93,7 +115,7 @@ curl -X POST http://localhost:8000/api/v1/extract \
 # 浏览器打开 http://localhost:8000/docs
 ```
 
-### 5. 后台运行（使用 systemd）
+### 6. 后台运行（使用 systemd）
 
 创建 `/etc/systemd/system/invoice-processor.service`：
 
@@ -104,22 +126,32 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
+User=nobody
+Group=nobody
 WorkingDirectory=/opt/invoice-processor
 Environment=PATH=/opt/invoice-processor/.venv/bin
 ExecStart=/opt/invoice-processor/.venv/bin/uvicorn web_api.main:app --host 0.0.0.0 --port 8000 --workers 1
 Restart=always
 RestartSec=10
 
+# 安全限制（生产环境推荐）
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
 [Install]
 WantedBy=multi-user.target
 ```
 
+启动服务：
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now invoice-processor
+
 # 查看状态
 sudo systemctl status invoice-processor
+
 # 查看日志
 sudo journalctl -u invoice-processor -f
 ```
@@ -182,13 +214,13 @@ server {
 pip install supervisor
 ```
 
-创建 `/etc/supervisor/conf.d/invoice-processor.conf`：
+创建 `/etc/supervisord.d/invoice-processor.ini`（OpenCloudOS/RHEL 路径）：
 
 ```ini
 [program:invoice-processor]
 command=/opt/invoice-processor/.venv/bin/uvicorn web_api.main:app --host 0.0.0.0 --port 8000 --workers 1
 directory=/opt/invoice-processor
-user=www-data
+user=nobody
 autostart=true
 autorestart=true
 startretries=3
@@ -226,6 +258,9 @@ export INVOICE_WEB_PRE_WARM_OCR=true
 ## 四、运维命令
 
 ```bash
+# ── 安装系统依赖 ──
+sudo dnf install -y mesa-libGL glib2 libgomp google-noto-cjk-fonts
+
 # ── 启动与停止 ──
 # 开发模式
 uvicorn web_api.main:app --host 0.0.0.0 --port 8000 --reload
@@ -233,12 +268,19 @@ uvicorn web_api.main:app --host 0.0.0.0 --port 8000 --reload
 # 生产模式（后台）
 nohup uvicorn web_api.main:app --host 0.0.0.0 --port 8000 --workers 1 > app.log 2>&1 &
 
+# systemd 方式
+sudo systemctl start invoice-processor
+sudo systemctl stop invoice-processor
+sudo systemctl restart invoice-processor
+
 # ── CLI 模式 ──
 # 批量处理文件夹
 python invoice_processor.py /path/to/invoices --config config.yaml
 
 # ── 监控 ──
 curl http://localhost:8000/api/v1/health  # 健康检查
+sudo journalctl -u invoice-processor -f   # 实时日志（systemd 方式）
+tail -f app.log                           # 实时日志（nohup 方式）
 ```
 
 ---
@@ -249,7 +291,7 @@ curl http://localhost:8000/api/v1/health  # 健康检查
 |------|------|
 | CPU 密集型 | 增加 `max_workers`（建议 ≤ CPU 核心数） |
 | 高并发 | 前置 Nginx 做负载均衡，后端多实例 |
-| GPU 加速 | `config.yaml` 中设置 `use_gpu: true`（需 CUDA） |
+| GPU 加速 | `config.yaml` 中设置 `use_gpu: true`（需 NVIDIA 驱动 + CUDA） |
 | 大批量文件 | 使用 `/api/v1/batch` 异步接口，客户端轮询结果 |
 | 内存不足 | 关闭 `pre_warm_ocr`，减小 `max_workers` |
 
@@ -258,10 +300,12 @@ curl http://localhost:8000/api/v1/health  # 健康检查
 ## 六、常见问题
 
 **Q: 启动后 `ocr_loaded: false`？**
-A: PaddleOCR 预热失败，服务仍可用。首次请求时自动加载，耗时约 30 秒。
+A: PaddleOCR 预热失败，常见原因及排查：
+   - 缺系统库：`sudo dnf install -y mesa-libGL glib2 libgomp`
+   - 模型下载超时：检查网络连接，或手动删除缓存 `rm -rf ~/.paddlex/ ~/.paddleocr/` 后重启重试
 
 **Q: 上传文件时返回 413？**
-A: 超出 `max_upload_size_mb` 限制，调大该值后重启。
+A: 超出 `max_upload_size_mb` 限制，调大该值后重启。如前置 Nginx，也需修改 `client_max_body_size`。
 
 **Q: 进程启动后立即退出？**
 A: 检查日志，常见原因：端口被占用、内存不足、Python 依赖未完整安装。
